@@ -1,9 +1,9 @@
-const pool = require('../db');
+const Barber = require('../models/Barber');
 
 const getBarbers = async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM barbers');
-    res.json(result.rows);
+    const barbers = await Barber.find();
+    res.json(barbers);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -11,12 +11,14 @@ const getBarbers = async (req, res) => {
 
 const addBarber = async (req, res) => {
   const { name } = req.body;
+  if (!name) {
+    return res.status(400).json({ error: 'Emri i berberit është i nevojshëm' });
+  }
+
   try {
-    const result = await pool.query(
-      'INSERT INTO barbers (name) VALUES ($1) RETURNING *',
-      [name]
-    );
-    res.status(201).json(result.rows[0]);
+    const newBarber = new Barber({ name });
+    const savedBarber = await newBarber.save();
+    res.status(201).json(savedBarber);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

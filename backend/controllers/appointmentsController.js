@@ -1,52 +1,37 @@
-const pool = require('../db');
+const Appointment = require('../models/Appointment');
 
-// ✅ Funksioni për krijimin e një rezervimi të ri
+// ✅ Krijo rezervim të ri
 const createAppointment = async (req, res) => {
   const { user_id, barber_id, date, time } = req.body;
 
   try {
-    // Kontrollo nëse orari është i zënë
-    const check = await pool.query(
-      `SELECT * FROM appointments 
-       WHERE barber_id = $1 AND date = $2 AND time = $3`,
-      [barber_id, date, time]
-    );
+    // Kontrollo nëse ekziston një rezervim në të njëjtën kohë
+    const existing = await Appointment.findOne({ barber_id, date, time });
 
-    if (check.rows.length > 0) {
+    if (existing) {
       return res.status(400).json({ error: 'Ky orar është i zënë për këtë berber.' });
     }
 
-    // Krijo rezervimin
-    const result = await pool.query(
-      `INSERT INTO appointments (user_id, barber_id, date, time)
-       VALUES ($1, $2, $3, $4)
-       RETURNING *`,
-      [user_id, barber_id, date, time]
-    );
-
-    res.status(201).json(result.rows[0]);
+    const newAppointment = new Appointment({ user_id, barber_id, date, time });
+    const saved = await newAppointment.save();
+    res.status(201).json(saved);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-// ✅ Funksioni për të marrë rezervimet sipas berberit dhe datës
+// ✅ Merr rezervimet sipas berberit dhe datës
 const getAppointmentsByBarberAndDate = async (req, res) => {
   const { barberId, date } = req.query;
 
   try {
-    const result = await pool.query(
-      `SELECT * FROM appointments WHERE barber_id = $1 AND date = $2`,
-      [barberId, date]
-    );
-
-    res.json(result.rows);
+    const appointments = await Appointment.find({ barber_id: barberId, date });
+    res.json(appointments);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-// Eksporto funksionet
 module.exports = {
   createAppointment,
   getAppointmentsByBarberAndDate
